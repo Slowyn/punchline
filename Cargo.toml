@@ -1,0 +1,8 @@
+[package]
+name = "punchline-back"
+version = "0.1.0"
+authors = ["Konstantin Yakushin <y231966mdk@gmail.com>"]
+
+[dependencies]
+rocket = "0.3.5"
+rocket_codegen = "0.3.5"
