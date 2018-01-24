@@ -41,7 +41,7 @@ fn index() -> &'static str {
 
 fn find_post(conn: db::Conn, pid: i32) -> QueryResult<Post> {
     posts
-        .filter(id.eq(pid))
+        .find(pid)
         .first::<Post>(&*conn)
 }
 
