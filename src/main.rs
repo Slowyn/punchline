@@ -20,24 +20,7 @@ mod db;
 
 use models::*;
 use schema::posts::dsl::*;
-
-//fn create_post<'a>(conn: &PgConnection, title: &'a str, body: &'a str) -> Post {
-//    use schema::posts;
-//
-//    let new_post = NewPost {
-//        title,
-//        body,
-//    };
-//    diesel::insert_into(posts::table)
-//        .values(&new_post)
-//        .get_result(conn)
-//        .expect("Error saving new post")
-//}
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
-}
+use schema::posts;
 
 fn find_post(conn: db::Conn, pid: i32) -> QueryResult<Post> {
     posts
@@ -52,12 +35,21 @@ fn get_post(conn: db::Conn, pid: i32) -> Json<Value> {
 
 }
 
+#[post("/", data = "<post>")]
+fn new_post(conn: db::Conn, post: Json<NewPost>) -> QueryResult<Json<Post>> {
+    let new_post_inst = post.0;
+
+    diesel::insert_into(posts::table)
+        .values(&new_post_inst)
+        .get_result::<Post>(&*conn)
+        .map(|p|  Json(p))
+}
+
 fn rocket() -> Rocket {
     let pool = db::init_pool();
     rocket::ignite()
         .manage(pool)
-        .mount("/", routes![index])
-        .mount("/post", routes![get_post])
+        .mount("/post", routes![get_post, new_post])
 }
 
 fn main() {
