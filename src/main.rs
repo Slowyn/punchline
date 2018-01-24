@@ -2,42 +2,64 @@
 #![plugin(rocket_codegen)]
 
 extern crate rocket;
+#[macro_use] extern crate rocket_contrib;
+#[macro_use] extern crate diesel;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
 extern crate dotenv;
-#[macro_use]
-extern crate diesel;
+extern crate r2d2;
+extern crate r2d2_diesel;
 
 use diesel::prelude::*;
-use diesel::pg::PgConnection;
+use rocket_contrib::{Json, Value};
+use rocket::Rocket;
 
 mod schema;
 mod models;
+mod db;
 
 use models::*;
+use schema::posts::dsl::*;
 
-fn establish_connection() -> PgConnection {
-    let db_url = dotenv::var("DATABASE_URL").expect("DB is not found. Shutdown");
-    PgConnection::establish(&db_url)
-        .expect(&format!("Error  connecting to {}", db_url))
-}
+//fn create_post<'a>(conn: &PgConnection, title: &'a str, body: &'a str) -> Post {
+//    use schema::posts;
+//
+//    let new_post = NewPost {
+//        title,
+//        body,
+//    };
+//    diesel::insert_into(posts::table)
+//        .values(&new_post)
+//        .get_result(conn)
+//        .expect("Error saving new post")
+//}
 
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
 }
 
-fn main() {
-    use schema::posts::dsl::*;
+fn find_post(conn: db::Conn, pid: i32) -> QueryResult<Post> {
+    posts
+        .filter(id.eq(pid))
+        .first::<Post>(&*conn)
+}
 
-    let conn = establish_connection();
-    let results = posts.filter(published.eq(true))
-        .limit(5)
-        .load::<Post>(&conn)
-        .expect("Error loading posts");
-    println!("Displaying {} posts", results.len());
-    for post in results {
-        println!("{}", post.title);
-        println!("----------\n");
-        println!("{}", post.body);
-    }
-//    rocket::ignite().mount("/", routes![index]).launch();
+#[get("/<pid>")]
+fn get_post(conn: db::Conn, pid: i32) -> Json<Value> {
+    let post = find_post(conn, pid).unwrap();
+    Json(json!(post))
+
+}
+
+fn rocket() -> Rocket {
+    let pool = db::init_pool();
+    rocket::ignite()
+        .manage(pool)
+        .mount("/", routes![index])
+        .mount("/post", routes![get_post])
+}
+
+fn main() {
+    rocket().launch();
 }
