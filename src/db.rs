@@ -14,7 +14,10 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub fn init_pool() -> Pool {
     let db_url = dotenv::var("DATABASE_URL").expect("DATABASE_URL is not found in `.env`.");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
-    r2d2::Pool::new(manager).expect("db pool")
+    r2d2::Pool::builder()
+        .max_size(15)
+        .build(manager)
+        .unwrap()
 }
 
 pub struct Conn(pub r2d2::PooledConnection<ConnectionManager<PgConnection>>);
