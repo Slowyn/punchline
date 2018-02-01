@@ -25,7 +25,6 @@ mod graphql_schema;
 
 use models::*;
 use schema::posts::dsl::*;
-use schema::posts;
 use graphql_schema::Context;
 
 type Schema = RootNode<'static, graphql_schema::QueryRoot, graphql_schema::MutationRoot>;
@@ -41,7 +40,7 @@ fn graphiql() -> content::Html<String> {
     juniper_rocket::graphiql_source("/graphql")
 }
 
-#[get("/graphql")]
+#[get("/graphql?<request>")]
 fn get_graphql_handler(
     context: State<Context>,
     request: juniper_rocket::GraphQLRequest,
@@ -50,22 +49,14 @@ fn get_graphql_handler(
     request.execute(&schema, &context)
 }
 
-//#[get("/<pid>")]
-//fn get_post(conn: db::Conn, pid: i32) -> Json<Value> {
-//    let post = find_post(conn, pid).unwrap();
-//    Json(json!(post))
-//
-//}
-//
-//#[post("/", data = "<post>")]
-//fn new_post(conn: db::Conn, post: Json<NewPost>) -> QueryResult<Json<Post>> {
-//    let new_post_inst = post.0;
-//
-//    diesel::insert_into(posts::table)
-//        .values(&new_post_inst)
-//        .get_result::<Post>(&*conn)
-//        .map(|p| Json(p))
-//}
+#[post("/graphql", data = "<request>")]
+fn post_graphql_handler(
+    context: State<Context>,
+    request: juniper_rocket::GraphQLRequest,
+    schema: State<Schema>,
+) -> juniper_rocket::GraphQLResponse {
+    request.execute(&schema, &context)
+}
 
 fn rocket() -> Rocket {
     let pool = db::init_pool();
@@ -73,8 +64,7 @@ fn rocket() -> Rocket {
     rocket::ignite()
         .manage(context)
         .manage(Schema::new(graphql_schema::QueryRoot, graphql_schema::MutationRoot))
-        .mount("/", routes![graphiql, get_graphql_handler])
-//        .mount("/post", routes![get_post, new_post])
+        .mount("/", routes![graphiql, get_graphql_handler, post_graphql_handler])
 }
 
 fn main() {

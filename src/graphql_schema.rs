@@ -2,12 +2,12 @@ use diesel;
 use diesel::prelude::*;
 
 use juniper::{Context as JuniperContext, FieldResult};
-use db::Conn;
+use db::Pool;
 
 use models::{Post, NewPost};
 
 pub struct Context {
-    pub pool: Conn,
+    pub pool: Pool,
 }
 
 impl JuniperContext for Context {}
@@ -19,12 +19,12 @@ graphql_object!(Post: () |&self| {
         self.id
     }
 
-    field title() -> &str as "title" {
-        self.title
+    field title() -> &String as "title" {
+        &self.title
     }
 
-    field body() -> &str as "post's body" {
-        self.body
+    field body() -> &String as "post's body" {
+        &self.body
     }
 
     field published() -> bool as "post's status" {
@@ -42,9 +42,10 @@ graphql_object!(QueryRoot: Context |&self| {
 
         let connection = executor.context().pool.clone().get().unwrap();
 
-        dsl::posts::order(dsl::id)
-            .load::<Post>(&*connection)
-            .to_field_err()
+        Ok(dsl::posts
+            .order(dsl::id)
+            .load(&*connection)
+            .unwrap())
     }
 });
 
@@ -56,19 +57,18 @@ graphql_object!(MutationRoot: Context |&self| {
     {
         use schema::posts::dsl;
         let connection = executor.context().pool.clone().get().unwrap();
-
-        connection.transaction(|| {
             let new_post = NewPost {
                 title,
                 body,
             };
 
-            diesel::insert_into(dsl::posts::table)
+            diesel::insert_into(::schema::posts::table)
                 .values(&new_post)
-                .get_result::<Post>(&*connection)?;
+                .get_result::<Post>(&*connection);
 
-            dsl::posts.order(dsl::id.desc())
+            Ok(dsl::posts
+                .order(dsl::id.desc())
                 .first::<Post>(&*connection)
-        }).to_field_result()
+                .unwrap())
     }
 });
