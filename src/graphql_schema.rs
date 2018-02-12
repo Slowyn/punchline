@@ -57,18 +57,18 @@ graphql_object!(MutationRoot: Context |&self| {
     {
         use schema::posts::dsl;
         let connection = executor.context().pool.clone().get().unwrap();
-            let new_post = NewPost {
-                title,
-                body,
-            };
+        let new_post = NewPost {
+            title,
+            body,
+        };
 
-            diesel::insert_into(::schema::posts::table)
-                .values(&new_post)
-                .get_result::<Post>(&*connection);
+        diesel::insert_into(::schema::posts::table)
+            .values(&new_post)
+            .get_result::<Post>(&*connection);
 
-            Ok(dsl::posts
-                .order(dsl::id.desc())
-                .first::<Post>(&*connection)
-                .unwrap())
+        Ok(dsl::posts
+            .order(dsl::id.desc())
+            .first::<Post>(&*connection)
+            .unwrap())
     }
 });

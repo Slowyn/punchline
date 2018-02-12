@@ -22,6 +22,7 @@ mod schema;
 mod models;
 mod db;
 mod graphql_schema;
+mod routes;
 
 use models::*;
 use schema::posts::dsl::*;
@@ -29,24 +30,9 @@ use graphql_schema::Context;
 
 type Schema = RootNode<'static, graphql_schema::QueryRoot, graphql_schema::MutationRoot>;
 
-fn find_post(conn: db::Conn, pid: i32) -> QueryResult<Post> {
-    posts
-        .find(pid)
-        .first::<Post>(&*conn)
-}
-
 #[get("/")]
 fn graphiql() -> content::Html<String> {
     juniper_rocket::graphiql_source("/graphql")
-}
-
-#[get("/graphql?<request>")]
-fn get_graphql_handler(
-    context: State<Context>,
-    request: juniper_rocket::GraphQLRequest,
-    schema: State<Schema>,
-) -> juniper_rocket::GraphQLResponse {
-    request.execute(&schema, &context)
 }
 
 #[post("/graphql", data = "<request>")]
@@ -64,7 +50,7 @@ fn rocket() -> Rocket {
     rocket::ignite()
         .manage(context)
         .manage(Schema::new(graphql_schema::QueryRoot, graphql_schema::MutationRoot))
-        .mount("/", routes![graphiql, get_graphql_handler, post_graphql_handler])
+        .mount("/", routes![graphiql, post_graphql_handler])
 }
 
 fn main() {
